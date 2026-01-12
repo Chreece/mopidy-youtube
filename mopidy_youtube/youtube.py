@@ -612,10 +612,27 @@ class Video(Entry):
                             download=False,
                         )
 
-                        self._audio_url.set(info["url"])
+                        url = info.get("url")
+                        if not url and info.get("requested_formats"):
+                            for fmt in info["requested_formats"]:
+                                if fmt.get("url") and fmt.get("acodec") != "none":
+                                    url = fmt["url"]
+                                    break
+                        if not url and info.get("formats"):
+                            for fmt in info["formats"]:
+                                if fmt.get("url") and fmt.get("acodec") != "none" and fmt.get("vcodec") in (None, "none"):
+                                    url = fmt["url"]
+                                    break
+
+                        if not url:
+                            raise KeyError(
+                                "No playable audio URL found in extractor result"
+                            )
+
+                        self._audio_url.set(url)
 
             except Exception as e:
-                logger.error(f"audio_url error {e} (videoId: {self.id})")
+                logger.exception(f"audio_url error {e} (videoId: {self.id})")
                 self._audio_url.set(None)
                 return
 
