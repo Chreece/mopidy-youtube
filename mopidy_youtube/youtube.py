@@ -2,6 +2,7 @@ import importlib
 import json
 import os
 from concurrent.futures.thread import ThreadPoolExecutor
+from queue import Full
 
 import pykka
 from cachetools import TTLCache, cached
@@ -195,7 +196,17 @@ class Entry:
                 val = item["snippet"]["channelId"]
             elif k == "track_no":
                 val = item["track_no"]
-            future.set(val)
+            if hasattr(future, "_queue") and not future._queue.empty():
+                continue
+
+            try:
+                future.set(val)
+            except Full:
+                logger.debug(
+                    "Future already set for field %s on object %s, skipping",
+                    k,
+                    getattr(self, "id", None),
+                )
 
     @classmethod
     def extend_fields(self, item, fields):
