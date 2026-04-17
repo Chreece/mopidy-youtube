@@ -329,7 +329,7 @@ class jAPI(Client):
 
         url = f'{urljoin(cls.endpoint, "youtubei/v1/search")}?{urlencode(query)}'
 
-        while len(results) < Video.search_results:
+        while len(results) < int(Video.search_results):
             if continuation:
                 data.update({"continuation": continuation})
 
@@ -341,37 +341,42 @@ class jAPI(Client):
                 headers=headers,
             )
 
-            if result.status_code == 200:
-                yt_data = json.loads(result.text)
+            if result.status_code != 200:
+                return results
 
-                if yt_data:
-                    # Initial result is handled by try block, continuations by except block
-                    try:
-                        sections = traverse(yt_data, continuationItemsPath)
-                    except KeyError:
-                         logger.warning(
-                            "jAPI run_search: unknown response structure for query %r",
-                            search_query,
-                         )
-                        return results
+            yt_data = json.loads(result.text)
+            if not yt_data:
+                return results
 
-                    extracted_json = None
-                    continuation_renderer = None
+            try:
+                sections = traverse(yt_data, sectionListRendererContentsPath)
+            except KeyError:
+                try:
+                    sections = traverse(yt_data, continuationItemsPath)
+                except KeyError:
+                    logger.warning(
+                        "jAPI run_search: unknown response structure for query %r",
+                        search_query,
+                    )
+                    return results
 
-                    for s in sections:
-                        if "itemSectionRenderer" in s:
-                            extracted_json = s["itemSectionRenderer"]["contents"]
-                            results.extend(cls.json_to_items(extracted_json))
-                        if "continuationItemRenderer" in s:
-                            continuation_renderer = s["continuationItemRenderer"]
+            continuation_renderer = None
 
-                    # If the continuationItemRenderer doesn't exist, assume no further results
-                    if continuation_renderer:
-                        continuation = continuation_renderer["continuationEndpoint"][
-                            "continuationCommand"
-                        ]["token"]
-                    else:
-                        return results
+            for s in sections:
+                if "itemSectionRenderer" in s:
+                    extracted_json = s["itemSectionRenderer"]["contents"]
+                    results.extend(cls.json_to_items(extracted_json))
+                if "continuationItemRenderer" in s:
+                    continuation_renderer = s["continuationItemRenderer"]
+
+            # If the continuationItemRenderer doesn't exist, assume no further results
+            if continuation_renderer:
+                continuation = continuation_renderer["continuationEndpoint"][
+                    "continuationCommand"
+                ]["token"]
+            else:
+                return results
+
         return results
 
     @classmethod
