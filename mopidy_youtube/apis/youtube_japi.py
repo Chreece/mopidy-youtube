@@ -369,7 +369,6 @@ class jAPI(Client):
                 if "continuationItemRenderer" in s:
                     continuation_renderer = s["continuationItemRenderer"]
 
-            # If the continuationItemRenderer doesn't exist, assume no further results
             if continuation_renderer:
                 continuation = continuation_renderer["continuationEndpoint"][
                     "continuationCommand"
