@@ -56,7 +56,7 @@ class jAPI(Client):
                 indent=1,
             )
         )
-
+        
     @classmethod
     def list_related_videos(cls, video_id):
         """
@@ -342,10 +342,19 @@ class jAPI(Client):
             )
 
             if result.status_code != 200:
+                logger.warning(
+                    "jAPI run_search: non-200 response %s for query %r",
+                    result.status_code,
+                    search_query,
+                )
                 return results
 
             yt_data = json.loads(result.text)
             if not yt_data:
+                logger.warning(
+                    "jAPI run_search: empty JSON response for query %r",
+                    search_query,
+                )
                 return results
 
             try:
@@ -500,7 +509,7 @@ class jAPI(Client):
                     duration = "PT" + format_duration(duration_text)
                     logger.debug(f"video {videoId} duration: {duration}")
                 except Exception as e:
-                    logger.warn(f"video {videoId} no video-time, possibly live: {e}")
+                    logger.warning(f"video {videoId} no video-time, possibly live: {e}")
                     duration = "PT0S"
 
                 item.update({"contentDetails": {"duration": duration}})
