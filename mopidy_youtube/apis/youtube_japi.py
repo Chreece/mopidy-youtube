@@ -45,7 +45,9 @@ class jAPI(Client):
 
         with ThreadPoolExecutor() as executor:
             futures = executor.map(cls.run_search, repeat(q), params)
-            [result.extend(value[: int(Video.search_results)]) for value in futures]
+            for value in futures:
+                if value:
+                    result.extend(value[: int(Video.search_results)])
 
         return json.loads(
             json.dumps(
@@ -345,9 +347,13 @@ class jAPI(Client):
                 if yt_data:
                     # Initial result is handled by try block, continuations by except block
                     try:
-                        sections = traverse(yt_data, sectionListRendererContentsPath)
-                    except KeyError:
                         sections = traverse(yt_data, continuationItemsPath)
+                    except KeyError:
+                         logger.warning(
+                            "jAPI run_search: unknown response structure for query %r",
+                            search_query,
+                         )
+                        return results
 
                     extracted_json = None
                     continuation_renderer = None
